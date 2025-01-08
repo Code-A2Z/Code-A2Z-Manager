@@ -6,6 +6,10 @@ from kaggle.api.kaggle_api_extended import KaggleApi
 import random
 import os
 
+# Setting Kaggle API credentials from environment variables
+os.environ["KAGGLE_USERNAME"] = os.getenv("KAGGLE_USERNAME")
+os.environ["KAGGLE_KEY"] = os.getenv("KAGGLE_KEY")
+
 class Kaggl(commands.Cog):
     def __init__(self, bot: CodeA2ZManager):
         self.bot = bot
@@ -15,15 +19,21 @@ class Kaggl(commands.Cog):
     @app_commands.command(name="kaggle_competitions", description="List ongoing Kaggle competitions")
     async def kaggle_competitions(self, ctx: discord.Interaction):
         # Check if the command is invoked in the correct channel
-        if ctx.channel_id != int(os.getenv("KAGGLE_CHANNEL_ID")):
+        if str(ctx.channel_id) != os.getenv("KAGGLE_CHANNEL_ID"):
             await ctx.response.send_message("This command can only be used in the Kaggle channel.", ephemeral=True)
             return
 
+        await ctx.response.defer(ephemeral=True)  # Defer the response to avoid timeout issues
+
         # Fetch the ongoing competitions sorted by latest deadline
-        competitions = self.api.competitions_list(sort_by="latestDeadline")
-        
+        try:
+            competitions = self.api.competitions_list(sort_by="latestDeadline")
+        except Exception as e:
+            await ctx.followup.send(f"An error occurred while fetching Kaggle competitions: {e}", ephemeral=True)
+            return
+
         if not competitions:
-            await ctx.response.send_message("No competitions found.", ephemeral=True)
+            await ctx.followup.send("No competitions found.", ephemeral=True)
             return
 
         competitions.sort(key=lambda x: x.deadline)
@@ -43,20 +53,27 @@ class Kaggl(commands.Cog):
     @app_commands.command(name="kaggle_datasets", description="Search for Kaggle datasets")
     async def kaggle_datasets(self, ctx: discord.Interaction, *, query: str):
         # Check if the command is invoked in the correct channel
-        if ctx.channel_id != int(os.getenv("KAGGLE_CHANNEL_ID")):
+        if str(ctx.channel_id) != os.getenv("KAGGLE_CHANNEL_ID"):
             await ctx.response.send_message("This command can only be used in the Kaggle channel.", ephemeral=True)
             return
 
-        all_datasets = []
-        for page in range(1, 3):
-            datasets = self.api.dataset_list(search=query, page=page)
-            all_datasets.extend(datasets)
+        await ctx.response.defer(ephemeral=True)  # Defer the response to avoid timeout issues
 
-        if not all_datasets:
-            await ctx.response.send_message(f"No datasets found for '{query}'.", ephemeral=True)
+        # Fetch datasets matching the query
+        try:
+            all_datasets = []
+            for page in range(1, 3):  # Fetch up to 2 pages of datasets
+                datasets = self.api.dataset_list(search=query, page=page)
+                all_datasets.extend(datasets)
+        except Exception as e:
+            await ctx.followup.send(f"An error occurred while fetching Kaggle datasets: {e}", ephemeral=True)
             return
 
-        await ctx.response.send_message(f"Here are the top datasets for '{query}':", ephemeral=True)
+        if not all_datasets:
+            await ctx.followup.send(f"No datasets found for '{query}'.", ephemeral=True)
+            return
+
+        # Select random datasets and sort them by download count
         random_datasets = random.sample(all_datasets, min(5, len(all_datasets)))
         random_datasets.sort(key=lambda x: x.downloadCount, reverse=True)
 

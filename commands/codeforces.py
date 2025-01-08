@@ -31,7 +31,7 @@ class Codeforces(commands.Cog):
         Fetch problems from Codeforces API filtered by tag and rating.
         """
         # Check if the command is invoked in the correct channel
-        if interaction.channel_id != int(os.getenv("CP_CHANNEL_ID")):
+        if str(interaction.channel_id) != os.getenv("CP_CHANNEL_ID"):
             await interaction.response.send_message("This command can only be used in the Competitive Programming channel.", ephemeral=True)
             return
 
@@ -85,7 +85,7 @@ class Codeforces(commands.Cog):
         Fetch and display upcoming contests from Codeforces API.
         """
         # Check if the command is invoked in the correct channel
-        if interaction.channel_id != int(os.getenv("CP_CHANNEL_ID")):
+        if str(interaction.channel_id) != os.getenv("CP_CHANNEL_ID"):
             await interaction.response.send_message("This command can only be used in the Competitive Programming channel.", ephemeral=True)
             return
 
